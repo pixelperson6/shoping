@@ -25,6 +25,7 @@ class Orders with ChangeNotifier {
   }
 
   Future<void> fetchAndSetOrders() async {
+    
     final url = Uri.https(
         'shoping-flutter-bc891-default-rtdb.firebaseio.com', '/orders.json');
     try {
@@ -39,7 +40,7 @@ class Orders with ChangeNotifier {
         loadedOrders.add(OrderItem(
           id: key,
           amount: value['amount'],
-          dateTime: DateTime.parse(value['dateTeme']),
+          dateTime: DateTime.parse(value['dateTime']),
           products: (value['products'] as List<dynamic>)
               .map(
                 (e) => CartItem(
@@ -69,19 +70,21 @@ class Orders with ChangeNotifier {
     final timeStamp = DateTime.now();
 
     try {
-      final response = await post(url,
-          body: ({
-            'amount': total,
-            'dateTime': timeStamp.toIso8601String(),
-            'products': cartProducts
-                .map((e) => {
-                      'id': e.id,
-                      'title': e.title,
-                      'quantity': e.quantity,
-                      'price': e.price,
-                    })
-                .toList(),
-          }));
+      final response = await post(
+        url,
+        body: json.encode({
+          'amount': total,
+          'dateTime': timeStamp.toIso8601String(),
+          'products': cartProducts
+              .map((cartItem) => {
+                    'id': cartItem.id,
+                    'title': cartItem.title,
+                    'quantity': cartItem.quantity,
+                    'price': cartItem.price,
+                  })
+              .toList(),
+        }),
+      );
 
       _orders.insert(
           0,

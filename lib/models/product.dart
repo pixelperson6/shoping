@@ -22,14 +22,14 @@ class Product with ChangeNotifier {
 
   Future<void> toggleFavoriteStatus() async {
     final url = Uri.https('shoping-flutter-bc891-default-rtdb.firebaseio.com',
-        '/products/$id.json');
+          '/products/$id.json');
 
     isFavorite = !isFavorite;
     notifyListeners();
     try {
       final response =
           await patch(url, body: json.encode({'isFavorite': isFavorite}));
-      if (response.statusCode >= 0) {
+      if (response.statusCode >= 400) {
         throw HttpException('error');
       }
     } catch (e) {
