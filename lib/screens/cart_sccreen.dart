@@ -36,18 +36,7 @@ class CartScreen extends StatelessWidget {
                   ),
                   backgroundColor: Theme.of(context).primaryColor,
                 ),
-                TextButton(
-                  onPressed: () {
-                    Provider.of<Orders>(context,listen: false)
-                        .addOrder(cart.items.values.toList(), cart.totalAmount);
-                    cart.clear();
-                  },
-                  style: ButtonStyle(
-                    foregroundColor: MaterialStateProperty.all<Color>(
-                        Theme.of(context).primaryColor),
-                  ),
-                  child: const Text('ORDER NOW'),
-                )
+                OrderButton(cart: cart)
               ],
             ),
           ),
@@ -66,6 +55,67 @@ class CartScreen extends StatelessWidget {
           itemCount: cart.itemCount,
         ))
       ]),
+    );
+  }
+}
+
+class OrderButton extends StatefulWidget {
+  const OrderButton({
+    Key? key,
+    required this.cart,
+  }) : super(key: key);
+
+  final Cart cart;
+
+  @override
+  State<OrderButton> createState() => _OrderButtonState();
+}
+
+class _OrderButtonState extends State<OrderButton> {
+  var _isLoading = false;
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: (widget.cart.totalAmount <= 0 || _isLoading)
+          ? null
+          : () async {
+              setState(() {
+                _isLoading = true;
+              });
+
+              try {
+                await Provider.of<Orders>(context, listen: false).addOrder(
+                    widget.cart.items.values.toList(), widget.cart.totalAmount);
+              } catch (error) {
+                await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('An error occurred!'),
+                    content: const Text('Something went wrong!'),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('Okey'),
+                      )
+                    ],
+                  ),
+                );
+              }
+
+              setState(() {
+                _isLoading = false;
+              });
+              widget.cart.clear();
+            },
+      style: ButtonStyle(
+        foregroundColor:
+            MaterialStateProperty.all<Color>(Theme.of(context).primaryColor),
+      ),
+      child: _isLoading
+          ? const CircularProgressIndicator()
+          : const Text('ORDER NOW'),
     );
   }
 }

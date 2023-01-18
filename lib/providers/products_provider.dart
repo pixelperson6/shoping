@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
+import 'package:shoping/models/http_exeption.dart';
 import 'package:shoping/models/product.dart';
 
 class ProductsProvider with ChangeNotifier {
-  final List<Product> _items = [
+  List<Product> _items = [
     Product(
       id: 'p1',
       title: 'Red Shirt',
@@ -54,9 +55,20 @@ class ProductsProvider with ChangeNotifier {
     return _items.where((element) => element.isFavorite).toList();
   }
 
-  void updateProduct(String id, Product newProduct) {
+  Future<void> updateProduct(String id, Product newProduct) async {
     final productIndex = _items.indexWhere((element) => element.id == id);
     if (productIndex >= 0) {
+      final url = Uri.https('shoping-flutter-bc891-default-rtdb.firebaseio.com',
+          '/products/$id.json');
+
+      await patch(url,
+          body: json.encode({
+            'title': newProduct.title,
+            'description': newProduct.description,
+            'price': newProduct.price,
+            'imageUrl': newProduct.imageUrl,
+          }));
+
       _items[productIndex] = newProduct;
       notifyListeners();
     } else {
@@ -64,17 +76,50 @@ class ProductsProvider with ChangeNotifier {
     }
   }
 
-  void deleteProduct(String id) {
-    _items.removeWhere((element) => element.id == id);
+  Future<void> deleteProduct(String id) async {
+    final url = Uri.https('shoping-flutter-bc891-default-rtdb.firebaseio.com',
+        '/products/$id.json');
+
+    final existingProductIndex =
+        _items.indexWhere((element) => element.id == id);
+    Product? existingProduct = _items[existingProductIndex];
+    // _items.removeWhere((element) => element.id == id);
+
+    _items.removeAt(existingProductIndex);
     notifyListeners();
+
+    final response = await http.delete(url);
+
+    if (response.statusCode >= 400) {
+      _items.insert(existingProductIndex, existingProduct);
+      notifyListeners();
+      throw HttpException('couldnt delete item');
+    }
+    existingProduct = null;
   }
 
-  Future<void> fetchAndProducts() async {
+  Future<void> fetchAndSetProducts() async {
     final url = Uri.https(
         'shoping-flutter-bc891-default-rtdb.firebaseio.com', '/products.json');
     try {
       final response = await get(url);
-      
+      final List<Product> loadedProducts = [];
+
+      final extractedData = json.decode(response.body) as Map<String, dynamic>;
+      if (extractedData == null) {
+        return;
+      }
+      extractedData.forEach((key, value) {
+        loadedProducts.add(Product(
+            id: key,
+            title: value['title'],
+            description: value['description'],
+            imageUrl: value['imageUrl'],
+            isFavorite: value['isFavorite'],
+            price: value['price']));
+      });
+      _items = loadedProducts;
+      notifyListeners();
     } catch (error) {
       rethrow;
     }
